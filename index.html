@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>test</title>
+    <style>
+        .box {
+            width: 120px;
+            height: 300px;
+            border: 1px dashed #ccc;
+            margin: 30px auto;
+        }
+        .goodBtn {
+            position: absolute;
+            left: 33px;
+            top: 304px;
+            width: 50px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 12px;
+            text-align: center;
+            height: 26px;
+            line-height: 26px;
+            cursor: pointer;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="box">
+            <div class="goodBtn">赞</div>
+        </div>
+    </div>
+</html>
+<script>
+
+/**
+ * @param {object} opition
+ * @param {object} option.box 外层dom节点
+ * @param {number} option.width 动画节点宽
+ * @param {number} option.height 动画节点高
+ * @param {number} option.pointsNum 动画线路点数
+*/
+class Animate {
+    constructor(option){
+        this.box = option.box; 
+        this.width = option.width || 12;
+        this.height = option.height || 12;
+        this.pointsNum = option.pointsNum || 100;
+        this.boxWidth = this.box.offsetWidth;
+        this.boxHeight = this.box.offsetHeight;
+        // 开始的坐标点为box的bottom中间点
+        this.center = {
+            x: this.boxWidth/2 - this.width/2,
+            y: this.boxHeight - this.height
+        }
+        this.box.style.position = "relative";
+        this.color = ["	#FFB6C1", "#FF00FF", "#7FFFAA", "#FFD700"]
+    }
+    // 创建三阶贝塞尔曲线的四个点坐标，这里给了固定三种曲线随机取
+    getBezierLine() {
+        const p0 = [this.center.x, this.center.y];
+        const p1 = [[80, 30],[20, 200],[10, 100]];
+        const p2 = [[10, 210],[80, 60],[90, 210]];
+        const cNum = this.getRandom(0, 3);
+
+        return {
+            p0,
+            p1: p1[cNum],
+            p2: p2[cNum],
+            p3: [this.getRandom(0, 100), 0]
+        }
+    }
+    // 获取一个区间的随机数
+    getRandom(m, n){
+        return Math.floor(Math.random()*(m - n) + n);
+    }
+    // 创建dom 开始动画
+    // cb用于处理dom，比如给dom添加背景图或者更改dom样式
+    create(cb) {
+        const div = document.createElement('div');
+        div.style.position = "absolute";
+        div.style.width = `${this.width}px`;
+        div.style.height = `${this.height}px`;
+        div.style.left = `${this.center.x}px`;
+        div.style.top = `${this.center.y}px`;
+        div.style.background = this.color[this.getRandom(0, 4)];
+        div.style.borderRadius = "50%";
+        cb && cb(div);
+        this.box.appendChild(div);
+        const line = this.getBezierLine();
+        const points = this.getBezierPoints(this.pointsNum, line.p0, line.p1, line.p2, line.p3);
+        this.timer(points, (p) => {
+            // 动画结束移除dom
+            if(!p) {
+                this.box.removeChild(div);
+                return;
+            }
+            // 更新dom坐标
+            div.style.left = `${p[0]}px`;
+            div.style.top = `${p[1]}px`;
+        })
+    }
+    // 三阶贝塞额曲线公式
+    threeBezier(t, p0, p1, p2, p3) {
+        const [x0, y0] = p0;
+        const [x1, y1] = p1;
+        const [x2, y2] = p2;
+        const [x3, y3] = p3;
+        const x =
+            x0 * (1 - t) * (1 - t) * (1 - t) +
+            3 * x1 * t * (1 - t) * (1 - t) +
+            3 * x2 * t * t * (1 - t) +
+            x3 * t * t * t;
+        const y =
+            y0 * (1 - t) * (1 - t) * (1 - t) +
+            3 * y1 * t * (1 - t) * (1 - t) +
+            3 * y2 * t * t * (1 - t) +
+            y3 * t * t * t;
+
+        return [x, y];
+    }
+    // 获取贝塞额曲线的坐标点
+    getBezierPoints(num, p1, p2, p3, p4) {
+        let func = null;
+        const points = [];
+        for (let i = 0; i < num; i++) {
+            points.push(this.threeBezier(i / num, p1, p2, p3, p4));
+        }
+        points.push([...p4]);
+        return points;
+    }
+    // 定时执行回调，回调里处理dom节点的状态
+    timer(points = [], cb) {
+        let tt = null;
+        function t(){
+            tt = setTimeout(() => {
+                points.length && cb(points.shift());
+                if(points.length){
+                    t();
+                }else{
+                    clearTimeout(tt);
+                    cb()
+                }
+            },40);
+        }
+        t();
+    }
+}
+
+const animateIns = new Animate({
+    box: document.getElementsByClassName('box')[0],
+    width: 22,
+    height: 22,
+    pointsNum: 50
+});
+
+const btn = document.getElementsByClassName('goodBtn')[0];
+btn.onclick=function(){
+    animateIns.create(dom => {});
+}
+</script>
